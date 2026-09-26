@@ -1,0 +1,11 @@
+Date,Region,Category,Product,Units Sold,Revenue,Discount,Profit,Customer Segment
+2026-01-05,North,Electronics,Laptop,12,144000,5,24000,Corporate
+2026-01-12,South,Furniture,Chair,25,62500,10,12500,Consumer
+2026-02-03,North,Electronics,Phone,30,90000,8,18000,Consumer
+2026-02-15,West,Clothing,Jacket,18,54000,15,10800,Consumer
+2026-03-01,South,Electronics,Tablet,20,80000,5,16000,Corporate
+2026-03-18,West,Furniture,Desk,10,75000,7,15000,Corporate
+2026-04-07,North,Clothing,Shoes,35,70000,12,14000,Consumer
+2026-04-22,South,Electronics,Laptop,8,96000,5,16000,Corporate
+2026-05-10,West,Clothing,Jacket,22,66000,10,13200,Consumer
+2026-06-02,North,Furniture,Chair,30,75000,8,15000,Consumer

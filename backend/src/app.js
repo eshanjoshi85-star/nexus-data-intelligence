@@ -2,7 +2,9 @@ const express = require("express");
 const cors = require("cors");
 
 const healthRoutes = require("./routes/healthRoutes");
-
+const authRoutes = require("./routes/authRoutes");
+const datasetRoutes = require("./routes/datasetRoutes");
+const queryRoutes = require("./routes/queryRoutes");
 const app = express();
 
 app.use(
@@ -14,7 +16,9 @@ app.use(
 app.use(express.json());
 
 app.use("/api/health", healthRoutes);
-
+app.use("/api/auth", authRoutes);
+app.use("/api/datasets", datasetRoutes);
+app.use("/api/datasets", queryRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
