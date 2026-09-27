@@ -5,7 +5,10 @@ const pool = require("../config/db");
 
 const detectDataType = (values) => {
   const nonEmptyValues = values.filter(
-    (value) => value !== null && value !== undefined && String(value).trim() !== ""
+    (value) =>
+      value !== null &&
+      value !== undefined &&
+      String(value).trim() !== ""
   );
 
   if (nonEmptyValues.length === 0) {
@@ -25,7 +28,9 @@ const detectDataType = (values) => {
   const isNumber = nonEmptyValues.every(
     (value) =>
       String(value).trim() !== "" &&
-      Number.isFinite(Number(String(value).replace(/,/g, "")))
+      Number.isFinite(
+        Number(String(value).replace(/,/g, ""))
+      )
   );
 
   if (isNumber) {
@@ -42,10 +47,15 @@ const detectDataType = (values) => {
   }
 
   const uniqueValues = new Set(
-    nonEmptyValues.map((value) => String(value).trim().toLowerCase())
+    nonEmptyValues.map((value) =>
+      String(value).trim().toLowerCase()
+    )
   );
 
-  if (uniqueValues.size <= Math.max(20, nonEmptyValues.length * 0.05)) {
+  if (
+    uniqueValues.size <=
+    Math.max(20, nonEmptyValues.length * 0.05)
+  ) {
     return "CATEGORY";
   }
 
@@ -80,6 +90,10 @@ const processDataset = async ({
   try {
     await client.query("BEGIN");
 
+    // --------------------------------------------------
+    // 1. Parse CSV
+    // --------------------------------------------------
+
     const rows = await parseCSV(buffer);
 
     if (rows.length === 0) {
@@ -92,10 +106,21 @@ const processDataset = async ({
       throw new Error("CSV file contains no columns");
     }
 
-    // Create dataset
+    // --------------------------------------------------
+    // 2. Create dataset record
+    // --------------------------------------------------
+
     const datasetResult = await client.query(
       `INSERT INTO datasets
-       (owner_id, name, description, original_filename, row_count, column_count, status)
+       (
+         owner_id,
+         name,
+         description,
+         original_filename,
+         row_count,
+         column_count,
+         status
+       )
        VALUES ($1, $2, $3, $4, $5, $6, 'PROCESSING')
        RETURNING id`,
       [
@@ -110,11 +135,16 @@ const processDataset = async ({
 
     const datasetId = datasetResult.rows[0].id;
 
-    // Create column metadata
+    // --------------------------------------------------
+    // 3. Analyze and store column metadata
+    // --------------------------------------------------
+
     for (let index = 0; index < columnNames.length; index++) {
       const columnName = columnNames[index];
 
-      const values = rows.map((row) => row[columnName]);
+      const values = rows.map(
+        (row) => row[columnName]
+      );
 
       const dataType = detectDataType(values);
 
@@ -126,24 +156,38 @@ const processDataset = async ({
       );
 
       const distinctCount = new Set(
-        nonEmptyValues.map((value) => String(value))
+        nonEmptyValues.map((value) =>
+          String(value)
+        )
       ).size;
 
       let minValue = null;
       let maxValue = null;
       let meanValue = null;
 
+      // ------------------------------------------------
+      // Numeric statistics
+      // ------------------------------------------------
+
       if (dataType === "NUMBER") {
         const numbers = nonEmptyValues
-          .map((value) => Number(String(value).replace(/,/g, "")))
+          .map((value) =>
+            Number(
+              String(value).replace(/,/g, "")
+            )
+          )
           .filter(Number.isFinite);
 
         if (numbers.length > 0) {
           minValue = Math.min(...numbers);
+
           maxValue = Math.max(...numbers);
+
           meanValue =
-            numbers.reduce((sum, value) => sum + value, 0) /
-            numbers.length;
+            numbers.reduce(
+              (sum, value) => sum + value,
+              0
+            ) / numbers.length;
         }
       }
 
@@ -161,7 +205,8 @@ const processDataset = async ({
            max_value,
            mean_value
          )
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+         VALUES
+         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           datasetId,
           columnName,
@@ -177,15 +222,58 @@ const processDataset = async ({
       );
     }
 
-    // Store rows as JSONB
-    for (let index = 0; index < rows.length; index++) {
+    // --------------------------------------------------
+    // 4. Store dataset rows in batches
+    // --------------------------------------------------
+
+    const BATCH_SIZE = 500;
+
+    for (
+      let start = 0;
+      start < rows.length;
+      start += BATCH_SIZE
+    ) {
+      const batch = rows.slice(
+        start,
+        start + BATCH_SIZE
+      );
+
+      const values = [];
+      const placeholders = [];
+
+      batch.forEach((row, index) => {
+        const rowNumber = start + index + 1;
+
+        const baseIndex =
+          values.length + 1;
+
+        values.push(
+          datasetId,
+          rowNumber,
+          JSON.stringify(row)
+        );
+
+        placeholders.push(
+          `($${baseIndex}, $${baseIndex + 1}, $${baseIndex + 2}::jsonb)`
+        );
+      });
+
       await client.query(
         `INSERT INTO dataset_rows
-         (dataset_id, row_number, data)
-         VALUES ($1, $2, $3::jsonb)`,
-        [datasetId, index + 1, JSON.stringify(rows[index])]
+         (
+           dataset_id,
+           row_number,
+           data
+         )
+         VALUES ${placeholders.join(", ")}`
+        ,
+        values
       );
     }
+
+    // --------------------------------------------------
+    // 5. Mark dataset as READY
+    // --------------------------------------------------
 
     await client.query(
       `UPDATE datasets
@@ -193,6 +281,10 @@ const processDataset = async ({
        WHERE id = $1`,
       [datasetId]
     );
+
+    // --------------------------------------------------
+    // 6. Commit transaction
+    // --------------------------------------------------
 
     await client.query("COMMIT");
 
@@ -204,6 +296,7 @@ const processDataset = async ({
     };
   } catch (error) {
     await client.query("ROLLBACK");
+
     throw error;
   } finally {
     client.release();
