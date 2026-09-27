@@ -55,6 +55,9 @@ function App() {
 
   const [user, setUser] = useState(null);
 
+  const [authMode, setAuthMode] = useState("login");
+
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -63,6 +66,15 @@ function App() {
 
   const [loginError, setLoginError] =
     useState("");
+
+  const [registerLoading, setRegisterLoading] =
+    useState(false);
+
+  const [registerError, setRegisterError] =
+    useState("");
+
+  const [googleLoading, setGoogleLoading] =
+    useState(false);
 
   // =====================================================
   // THEME
@@ -330,6 +342,101 @@ function App() {
       setLoginLoading(false);
     }
   };
+
+  // =====================================================
+  // REGISTER
+  // =====================================================
+
+  const handleRegister = async (event) => {
+    event.preventDefault();
+
+    setRegisterLoading(true);
+    setRegisterError("");
+
+    try {
+      const data = await apiRequest(
+        "/api/auth/register",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            fullname: fullName.trim(),
+            email: email.trim().toLowerCase(),
+            password,
+          }),
+        }
+      );
+
+      localStorage.setItem(
+        "nexus_token",
+        data.token
+      );
+
+      setToken(data.token);
+    } catch (err) {
+      setRegisterError(
+        err.message ||
+          "Registration failed"
+      );
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
+
+  // =====================================================
+  // GOOGLE OAUTH
+  // =====================================================
+
+  const handleGoogleLogin = () => {
+    setGoogleLoading(true);
+    window.location.assign(
+      `${API_URL}/api/auth/google`
+    );
+  };
+
+  // =====================================================
+  // OAUTH CALLBACK
+  // =====================================================
+
+  useEffect(() => {
+    const params = new URLSearchParams(
+      window.location.search
+    );
+
+    const oauthToken =
+      params.get("auth_token");
+
+    const oauthError =
+      params.get("auth_error");
+
+    if (oauthToken) {
+      localStorage.setItem(
+        "nexus_token",
+        oauthToken
+      );
+
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname
+      );
+
+      setToken(oauthToken);
+    }
+
+    if (oauthError) {
+      setLoginError(
+        decodeURIComponent(oauthError)
+      );
+
+      setGoogleLoading(false);
+
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname
+      );
+    }
+  }, []);
 
   // =====================================================
   // LOGOUT
@@ -1052,20 +1159,21 @@ function App() {
     search.trim() !== "";
 
   // =====================================================
-  // LOGIN PAGE
+  // LOGIN / REGISTER PAGE
   // =====================================================
 
   if (!token) {
+    const isRegister = authMode === "register";
+
     return (
       <div className="login-page">
 
         <div className="login-theme-toggle">
-
           <button
             className="theme-toggle"
-            onClick={
-              toggleTheme
-            }
+            onClick={toggleTheme}
+            type="button"
+            aria-label="Toggle theme"
           >
             {theme === "dark" ? (
               <Sun size={17} />
@@ -1073,7 +1181,6 @@ function App() {
               <Moon size={17} />
             )}
           </button>
-
         </div>
 
         <div className="login-card">
@@ -1085,67 +1192,184 @@ function App() {
           <h1>NEXUS</h1>
 
           <p className="login-subtitle">
-            Data Intelligence
-            Workspace
+            {isRegister
+              ? "Create your Data Intelligence Workspace"
+              : "Data Intelligence Workspace"}
           </p>
 
-          <form
-            className="login-form"
-            onSubmit={
-              handleLogin
-            }
-          >
-
-            <label>
-              Email
-            </label>
-
-            <input
-              type="email"
-              value={email}
-              onChange={(event) =>
-                setEmail(
-                  event.target.value
-                )
-              }
-              placeholder="Enter your email"
-              required
-            />
-
-            <label>
-              Password
-            </label>
-
-            <input
-              type="password"
-              value={password}
-              onChange={(event) =>
-                setPassword(
-                  event.target.value
-                )
-              }
-              placeholder="Enter your password"
-              required
-            />
-
-            {loginError && (
-              <div className="error-box">
-                {loginError}
-              </div>
-            )}
-
-            <button
-              className="primary-button login-button"
-              disabled={
-                loginLoading
-              }
+          {isRegister ? (
+            <form
+              className="login-form"
+              onSubmit={handleRegister}
             >
-              {loginLoading
-                ? "Signing in..."
-                : "Sign in"}
-            </button>
 
-          </form>
+              <label>Full name</label>
+
+              <input
+                type="text"
+                value={fullName}
+                onChange={(event) =>
+                  setFullName(event.target.value)
+                }
+                placeholder="Enter your full name"
+                autoComplete="name"
+                required
+              />
+
+              <label>Email</label>
+
+              <input
+                type="email"
+                value={email}
+                onChange={(event) =>
+                  setEmail(event.target.value)
+                }
+                placeholder="Enter your email"
+                autoComplete="email"
+                required
+              />
+
+              <label>Password</label>
+
+              <input
+                type="password"
+                value={password}
+                onChange={(event) =>
+                  setPassword(event.target.value)
+                }
+                placeholder="Create a password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+              />
+
+              {registerError && (
+                <div className="error-box">
+                  {registerError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="primary-button login-button"
+                disabled={registerLoading}
+              >
+                {registerLoading
+                  ? "Creating account..."
+                  : "Create account"}
+              </button>
+
+              <div className="auth-divider">
+                <span>or</span>
+              </div>
+
+              <button
+                type="button"
+                className="google-button"
+                onClick={handleGoogleLogin}
+                disabled={googleLoading}
+              >
+                <span className="google-mark">G</span>
+                {googleLoading
+                  ? "Connecting..."
+                  : "Continue with Google"}
+              </button>
+
+              <div className="auth-switch">
+                Already have an account?
+                <button
+                  type="button"
+                  className="auth-link"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setRegisterError("");
+                  }}
+                >
+                  Sign in
+                </button>
+              </div>
+
+            </form>
+          ) : (
+            <form
+              className="login-form"
+              onSubmit={handleLogin}
+            >
+
+              <label>Email</label>
+
+              <input
+                type="email"
+                value={email}
+                onChange={(event) =>
+                  setEmail(event.target.value)
+                }
+                placeholder="Enter your email"
+                autoComplete="email"
+                required
+              />
+
+              <label>Password</label>
+
+              <input
+                type="password"
+                value={password}
+                onChange={(event) =>
+                  setPassword(event.target.value)
+                }
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                required
+              />
+
+              {loginError && (
+                <div className="error-box">
+                  {loginError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="primary-button login-button"
+                disabled={loginLoading}
+              >
+                {loginLoading
+                  ? "Signing in..."
+                  : "Sign in"}
+              </button>
+
+              <div className="auth-divider">
+                <span>or</span>
+              </div>
+
+              <button
+                type="button"
+                className="google-button"
+                onClick={handleGoogleLogin}
+                disabled={googleLoading}
+              >
+                <span className="google-mark">G</span>
+                {googleLoading
+                  ? "Connecting..."
+                  : "Continue with Google"}
+              </button>
+
+              <div className="auth-switch">
+                Don't have an account?
+                <button
+                  type="button"
+                  className="auth-link"
+                  onClick={() => {
+                    setAuthMode("register");
+                    setLoginError("");
+                  }}
+                >
+                  Create account
+                </button>
+              </div>
+
+            </form>
+          )}
 
         </div>
 

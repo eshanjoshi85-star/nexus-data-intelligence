@@ -31,6 +31,97 @@
   --input-bg: rgba(2, 6, 23, 0.65);
 }
 
+
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 2px;
+  color: var(--text-faint);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.auth-divider span {
+  flex: 0 0 auto;
+}
+
+.google-button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.google-button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.google-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.google-mark {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #4285f4;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.auth-switch {
+  margin-top: 8px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.auth-link {
+  margin-left: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-light);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
 /* =========================================================
    LIGHT THEME
 ========================================================= */
@@ -350,8 +441,6 @@
 }
 
 .nav-item {
-  width: 100%;
-
   display: flex;
   align-items: center;
 
@@ -359,35 +448,13 @@
 
   padding: 11px 12px;
 
-  border: 1px solid transparent;
   border-radius: 10px;
 
   color: var(--text-muted);
 
-  background: transparent;
-
-  font-family: inherit;
   font-size: 13px;
 
-  text-align: left;
-
-  cursor: pointer;
-
-  outline: none;
-
-  transition:
-    color 0.18s ease,
-    background 0.18s ease,
-    border-color 0.18s ease;
-}
-
-.nav-item:focus {
-  outline: none;
-}
-
-.nav-item:focus-visible {
-  outline: 2px solid rgba(99, 102, 241, 0.25);
-  outline-offset: 2px;
+  transition: 0.18s ease;
 }
 
 .nav-item.active {
