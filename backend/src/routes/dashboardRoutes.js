@@ -1,5 +1,5 @@
 const express = require("express");
-console.log("✅ dashboardRoutes.js loaded");
+
 const authenticate = require("../middleware/authMiddleware");
 const { getDashboard } = require("../controllers/dashboardController");
 
