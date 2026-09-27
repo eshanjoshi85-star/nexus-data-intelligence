@@ -350,6 +350,8 @@
 }
 
 .nav-item {
+  width: 100%;
+
   display: flex;
   align-items: center;
 
@@ -357,13 +359,35 @@
 
   padding: 11px 12px;
 
+  border: 1px solid transparent;
   border-radius: 10px;
 
   color: var(--text-muted);
 
+  background: transparent;
+
+  font-family: inherit;
   font-size: 13px;
 
-  transition: 0.18s ease;
+  text-align: left;
+
+  cursor: pointer;
+
+  outline: none;
+
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.nav-item:focus {
+  outline: none;
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.25);
+  outline-offset: 2px;
 }
 
 .nav-item.active {

@@ -19,6 +19,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Table2,
 } from "lucide-react";
 
 import {
@@ -1218,7 +1219,7 @@ function App() {
               setSidebarOpen(false);
             }}
           >
-            <Database
+            <Table2
               size={18}
             />
             Data Explorer
@@ -2042,9 +2043,10 @@ function App() {
                       dataKey="profit"
                       nameKey="category"
                       cx="50%"
-                      cy="48%"
-                      outerRadius={82}
-                      label
+                      cy="43%"
+                      outerRadius={72}
+                      label={false}
+                      labelLine={false}
                     >
 
                       {categoryData.map(
