@@ -359,7 +359,7 @@ function App() {
         {
           method: "POST",
           body: JSON.stringify({
-            fullname: fullName.trim(),
+            fullName: fullName.trim(),
             email: email.trim().toLowerCase(),
             password,
           }),

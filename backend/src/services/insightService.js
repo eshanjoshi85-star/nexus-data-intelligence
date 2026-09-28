@@ -1,5 +1,9 @@
 const pool = require("../config/db");
 
+// =====================================================
+// GET DATASET COLUMNS
+// =====================================================
+
 const getDatasetColumns = async (datasetId) => {
   const result = await pool.query(
     `SELECT
@@ -16,6 +20,10 @@ const getDatasetColumns = async (datasetId) => {
   return result.rows;
 };
 
+// =====================================================
+// FIND COLUMN BY PATTERN
+// =====================================================
+
 const findColumn = (columns, patterns) => {
   return columns.find((column) =>
     patterns.some((pattern) =>
@@ -25,6 +33,10 @@ const findColumn = (columns, patterns) => {
     )
   );
 };
+
+// =====================================================
+// BUILD FILTER WHERE CLAUSE
+// =====================================================
 
 const buildWhereClause = (
   datasetId,
@@ -63,26 +75,35 @@ const buildWhereClause = (
   }
 
   return {
-    whereClause:
-      conditions.join(" AND "),
+    whereClause: conditions.join(" AND "),
     values,
   };
 };
+
+// =====================================================
+// GET INSIGHTS
+// =====================================================
 
 const getInsights = async ({
   datasetId,
   filters = {},
 }) => {
+  // ---------------------------------------------------
+  // Get dataset columns
+  // ---------------------------------------------------
+
   const columns =
-    await getDatasetColumns(
-      datasetId
-    );
+    await getDatasetColumns(datasetId);
 
   if (!columns.length) {
     throw new Error(
       "Dataset columns not found"
     );
   }
+
+  // ---------------------------------------------------
+  // Detect useful columns
+  // ---------------------------------------------------
 
   const revenueColumn =
     findColumn(columns, [
@@ -129,6 +150,10 @@ const getInsights = async ({
       "area",
     ]);
 
+  // ---------------------------------------------------
+  // Build WHERE clause
+  // ---------------------------------------------------
+
   const {
     whereClause,
     values,
@@ -136,6 +161,10 @@ const getInsights = async ({
     datasetId,
     filters
   );
+
+  // ===================================================
+  // BASE METRIC QUERY
+  // ===================================================
 
   const insightValues = [
     ...values,
@@ -243,9 +272,9 @@ const getInsights = async ({
 
   const insights = [];
 
-  // ------------------------------------------
-  // Dataset overview
-  // ------------------------------------------
+  // ===================================================
+  // 1. DATASET OVERVIEW
+  // ===================================================
 
   insights.push({
     type: "summary",
@@ -254,9 +283,9 @@ const getInsights = async ({
     message: `${metrics.row_count} records are currently being analyzed.`,
   });
 
-  // ------------------------------------------
-  // Revenue
-  // ------------------------------------------
+  // ===================================================
+  // 2. REVENUE
+  // ===================================================
 
   if (revenueColumn) {
     insights.push({
@@ -269,9 +298,9 @@ const getInsights = async ({
     });
   }
 
-  // ------------------------------------------
-  // Profit
-  // ------------------------------------------
+  // ===================================================
+  // 3. PROFIT
+  // ===================================================
 
   if (profitColumn) {
     insights.push({
@@ -284,32 +313,44 @@ const getInsights = async ({
     });
   }
 
-  // ------------------------------------------
-  // Top revenue category
-  // ------------------------------------------
+  // ===================================================
+  // 4. TOP REVENUE CATEGORY
+  // ===================================================
 
   if (
     categoryColumn &&
     revenueColumn
   ) {
+    const categoryParam =
+      values.length + 1;
+
+    const revenueParam =
+      values.length + 2;
+
     const result =
       await pool.query(
         `SELECT
-           data ->> $2 AS category,
+           data ->> $${categoryParam} AS category,
+
            SUM(
              NULLIF(
                REPLACE(
-                 data ->> $3,
+                 data ->> $${revenueParam},
                  ',',
                  ''
                ),
                ''
              )::numeric
            ) AS revenue
+
          FROM dataset_rows
+
          WHERE ${whereClause}
-         GROUP BY data ->> $2
+
+         GROUP BY data ->> $${categoryParam}
+
          ORDER BY revenue DESC
+
          LIMIT 1`,
         [
           ...values,
@@ -334,32 +375,44 @@ const getInsights = async ({
     }
   }
 
-  // ------------------------------------------
-  // Top region
-  // ------------------------------------------
+  // ===================================================
+  // 5. TOP PERFORMING REGION
+  // ===================================================
 
   if (
     regionColumn &&
     revenueColumn
   ) {
+    const regionParam =
+      values.length + 1;
+
+    const revenueParam =
+      values.length + 2;
+
     const result =
       await pool.query(
         `SELECT
-           data ->> $2 AS region,
+           data ->> $${regionParam} AS region,
+
            SUM(
              NULLIF(
                REPLACE(
-                 data ->> $3,
+                 data ->> $${revenueParam},
                  ',',
                  ''
                ),
                ''
              )::numeric
            ) AS revenue
+
          FROM dataset_rows
+
          WHERE ${whereClause}
-         GROUP BY data ->> $2
+
+         GROUP BY data ->> $${regionParam}
+
          ORDER BY revenue DESC
+
          LIMIT 1`,
         [
           ...values,
@@ -384,32 +437,44 @@ const getInsights = async ({
     }
   }
 
-  // ------------------------------------------
-  // Top profit category
-  // ------------------------------------------
+  // ===================================================
+  // 6. LARGEST PROFIT CONTRIBUTOR
+  // ===================================================
 
   if (
     categoryColumn &&
     profitColumn
   ) {
+    const categoryParam =
+      values.length + 1;
+
+    const profitParam =
+      values.length + 2;
+
     const result =
       await pool.query(
         `SELECT
-           data ->> $2 AS category,
+           data ->> $${categoryParam} AS category,
+
            SUM(
              NULLIF(
                REPLACE(
-                 data ->> $3,
+                 data ->> $${profitParam},
                  ',',
                  ''
                ),
                ''
              )::numeric
            ) AS profit
+
          FROM dataset_rows
+
          WHERE ${whereClause}
-         GROUP BY data ->> $2
+
+         GROUP BY data ->> $${categoryParam}
+
          ORDER BY profit DESC
+
          LIMIT 1`,
         [
           ...values,
@@ -434,26 +499,32 @@ const getInsights = async ({
     }
   }
 
-  // ------------------------------------------
-  // Monthly revenue movement
-  // ------------------------------------------
+  // ===================================================
+  // 7. MONTHLY REVENUE MOVEMENT
+  // ===================================================
 
   if (
     dateColumn &&
     revenueColumn
   ) {
+    const dateParam =
+      values.length + 1;
+
+    const revenueParam =
+      values.length + 2;
+
     const result =
       await pool.query(
         `SELECT
            DATE_TRUNC(
              'month',
-             (data ->> $2)::date
+             (data ->> $${dateParam})::date
            ) AS month,
 
            SUM(
              NULLIF(
                REPLACE(
-                 data ->> $3,
+                 data ->> $${revenueParam},
                  ',',
                  ''
                ),
@@ -528,9 +599,9 @@ const getInsights = async ({
     }
   }
 
-  // ------------------------------------------
-  // Units
-  // ------------------------------------------
+  // ===================================================
+  // 8. VOLUME / UNITS
+  // ===================================================
 
   if (unitsColumn) {
     insights.push({
@@ -544,6 +615,10 @@ const getInsights = async ({
       )} total units are represented in the current selection.`,
     });
   }
+
+  // ===================================================
+  // RETURN
+  // ===================================================
 
   return {
     insights,
